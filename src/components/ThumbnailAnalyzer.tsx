@@ -1,4 +1,4 @@
-// src/components/ThumbnailAnalyzer.tsx - VERSION ANALYSE QUALITATIVE
+// src/components/ThumbnailAnalyzer.tsx - VERSION ÉQUILIBRÉE AVEC NICHES
 "use client";
 
 import { useState } from "react";
@@ -9,36 +9,84 @@ import {
   Loader2,
   Star,
   TrendingUp,
-  Eye,
-  User,
-  Palette,
-  Smartphone,
   Clock,
+  RotateCcw,
+  ChevronDown,
 } from "lucide-react";
 
-interface VisualFactors {
-  facePresent: boolean;
-  emotion: string;
-  colorScheme: string;
-  textCount: number;
-  mobileFriendly: boolean;
-  contrast: string;
-}
+// Niches YouTube avec critères spécifiques
+const YOUTUBE_NICHES = [
+  {
+    id: "gaming",
+    label: "🎮 Gaming",
+    description: "Jeux vidéo, streams, let's play",
+    criteria: "Expressions vives, couleurs saturées, action visible",
+  },
+  {
+    id: "education",
+    label: "📚 Éducation",
+    description: "Tutoriels, cours, explications",
+    criteria: "Clarté, professionnalisme, éléments visuels didactiques",
+  },
+  {
+    id: "lifestyle",
+    label: "✨ Lifestyle",
+    description: "Mode, beauté, vie quotidienne",
+    criteria: "Esthétique soignée, personnalité, ambiance",
+  },
+  {
+    id: "tech",
+    label: "💻 Tech",
+    description: "High-tech, reviews, unboxing",
+    criteria: "Produits visibles, setup professionnel, modernité",
+  },
+  {
+    id: "fitness",
+    label: "💪 Fitness",
+    description: "Sport, nutrition, bien-être",
+    criteria: "Énergie, transformation, motivation",
+  },
+  {
+    id: "entertainment",
+    label: "🎬 Divertissement",
+    description: "Comédie, réactions, challenges",
+    criteria: "Expression marquée, émotion forte, fun",
+  },
+  {
+    id: "business",
+    label: "💼 Business",
+    description: "Entrepreneur, finance, développement",
+    criteria: "Professionnalisme, crédibilité, réussite",
+  },
+  {
+    id: "cooking",
+    label: "👨‍🍳 Cuisine",
+    description: "Recettes, restaurants, food",
+    criteria: "Appétence visuelle, couleurs chaudes, présentation",
+  },
+  {
+    id: "travel",
+    label: "✈️ Voyage",
+    description: "Destinations, vlogs voyage",
+    criteria: "Paysages, aventure, découverte",
+  },
+  {
+    id: "other",
+    label: "🎯 Autre",
+    description: "Niche spécifique ou mixte",
+    criteria: "Adaptation selon le contenu",
+  },
+];
 
 interface AnalysisResult {
   score: number;
-  ctrEstimate: string;
-  analysis: string; // Nouvelle analyse textuelle
-  visualFactors: VisualFactors; // Nouveaux facteurs visuels
-  strengths: string[];
-  improvements: string[]; // Changé de "weaknesses"
+  analysis: string;
   suggestions: string[];
   metadata?: {
     processingTime: number;
     tokensUsed: number;
     estimatedCost: number;
-    analysisType: string;
-    imageSize: number;
+    niche: string;
   };
 }
 
@@ -46,6 +94,7 @@ export default function ThumbnailAnalyzer() {
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [title, setTitle] = useState("");
+  const [selectedNiche, setSelectedNiche] = useState<string>("other");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string>("");
@@ -87,6 +136,7 @@ export default function ThumbnailAnalyzer() {
       const formData = new FormData();
       formData.append("image", image);
       formData.append("title", title);
+      formData.append("niche", selectedNiche);
 
       const response = await fetch("/api/analyze", {
         method: "POST",
@@ -103,7 +153,7 @@ export default function ThumbnailAnalyzer() {
     } catch (error) {
       console.error("Erreur:", error);
       setError(
-        `Erreur: ${error instanceof Error ? error.message : "Erreur inconnue"}`
+        `Erreur: ${error instanceof Error ? error.message : "Analyse impossible"}`
       );
     } finally {
       setIsAnalyzing(false);
@@ -111,126 +161,142 @@ export default function ThumbnailAnalyzer() {
   };
 
   const resetAnalysis = () => {
+    setResult(null);
     setImage(null);
     setImagePreview("");
     setTitle("");
-    setResult(null);
     setError("");
   };
 
-  // Fonction helper pour l'icône d'émotion
-  const getEmotionIcon = (emotion: string) => {
-    switch (emotion.toLowerCase()) {
-      case "souriant":
-        return "😊";
-      case "choqué":
-      case "surpris":
-        return "😲";
-      case "neutre":
-        return "😐";
-      case "absent":
-        return "❌";
-      default:
-        return "🤔";
-    }
+  const getScoreLabel = (score: number) => {
+    if (score >= 8) return "Excellent";
+    if (score >= 6) return "Bon";
+    if (score >= 4) return "Moyen";
+    return "À améliorer";
   };
 
-  // Fonction helper pour la couleur du schéma
-  const getColorSchemeColor = (scheme: string) => {
-    switch (scheme.toLowerCase()) {
-      case "rouge-jaune":
-        return "bg-gradient-to-r from-red-500 to-yellow-500";
-      case "bleu-vert":
-        return "bg-gradient-to-r from-blue-500 to-green-500";
-      case "sombre":
-        return "bg-gradient-to-r from-gray-800 to-gray-600";
-      default:
-        return "bg-gradient-to-r from-gray-400 to-gray-500";
-    }
+  const getScoreColor = (score: number) => {
+    if (score >= 8) return "text-green-500";
+    if (score >= 6) return "text-blue-500";
+    if (score >= 4) return "text-orange-500";
+    return "text-red-500";
   };
+
+  const selectedNicheData = YOUTUBE_NICHES.find((n) => n.id === selectedNiche);
 
   return (
     <div className="space-y-8">
-      {/* Zone d'upload */}
-      <div className="bg-white rounded-lg border border-[#d3d3d3] p-8">
+      {/* Upload et configuration */}
+      <div className="bg-white rounded-lg border border-[#d3d3d3] p-6">
         <h3 className="text-xl font-semibold text-[#282828] mb-6">
-          1. Uploadez votre miniature
+          📸 Votre miniature à analyser
         </h3>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Upload zone */}
+        <div className="space-y-6">
+          {/* Upload d'image */}
           <div>
-            <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-[#d3d3d3] rounded-lg cursor-pointer bg-[#f9f9f9] hover:bg-gray-50 transition-colors">
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                {imagePreview ? (
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="max-h-48 max-w-full object-contain rounded"
-                  />
-                ) : (
-                  <>
-                    <Upload className="w-8 h-8 mb-4 text-[#606060]" />
-                    <p className="mb-2 text-sm text-[#606060]">
-                      <span className="font-semibold">
-                        Cliquez pour uploader
-                      </span>{" "}
-                      ou glissez-déposez
-                    </p>
-                    <p className="text-xs text-[#606060]">
-                      PNG, JPG, JPEG (MAX. 5MB)
-                    </p>
-                  </>
-                )}
-              </div>
-              <input
-                type="file"
-                className="hidden"
-                accept="image/*"
-                onChange={handleImageUpload}
-              />
+            <label className="block text-sm font-medium text-[#282828] mb-3">
+              Image de la miniature
             </label>
-          </div>
 
-          {/* Configuration zone */}
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-[#282828] mb-2">
-                2. Titre de votre vidéo
-              </label>
-              <Input
-                type="text"
-                placeholder="Ex: CETTE ASTUCE VA CHANGER VOTRE VIE ! (incroyable)"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="bg-white border-[#d3d3d3] text-[#282828] h-12"
-              />
-            </div>
-
-            <div className="text-sm text-[#606060]">
-              <p className="mb-2">
-                💡 <strong>Tips pour un bon titre :</strong>
-              </p>
-              <ul className="list-disc list-inside space-y-1 text-xs">
-                <li>Utilisez des mots émotionnels</li>
-                <li>Créez de la curiosité</li>
-                <li>Restez entre 40-60 caractères</li>
-                <li>Utilisez des MAJUSCULES avec parcimonie</li>
-              </ul>
-            </div>
-
-            {/* Messages d'erreur */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded p-3">
-                <p className="text-red-700 text-sm">{error}</p>
+            {!imagePreview ? (
+              <div className="border-2 border-dashed border-[#d3d3d3] rounded-lg p-8 text-center hover:border-[#cc0000] transition-colors">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <label
+                  htmlFor="image-upload"
+                  className="cursor-pointer flex flex-col items-center"
+                >
+                  <Upload className="w-12 h-12 text-[#606060] mb-4" />
+                  <span className="text-lg text-[#282828] font-medium mb-2">
+                    Cliquez pour uploader une image
+                  </span>
+                  <span className="text-[#606060] text-sm">
+                    PNG, JPG, WEBP • Max 5MB
+                  </span>
+                </label>
+              </div>
+            ) : (
+              <div className="relative">
+                <img
+                  src={imagePreview}
+                  alt="Miniature preview"
+                  className="w-full max-w-md mx-auto rounded-lg border border-[#d3d3d3]"
+                />
+                <button
+                  onClick={() => {
+                    setImagePreview("");
+                    setImage(null);
+                  }}
+                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition-colors"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
               </div>
             )}
+          </div>
 
+          {/* Titre */}
+          <div>
+            <label className="block text-sm font-medium text-[#282828] mb-3">
+              Titre de la vidéo
+            </label>
+            <Input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Entrez le titre de votre vidéo YouTube..."
+              className="text-base"
+            />
+            <p className="text-xs text-[#606060] mt-2">
+              {title.length}/100 caractères • Optimal: 40-60 caractères
+            </p>
+          </div>
+
+          {/* Sélection de niche */}
+          <div>
+            <label className="block text-sm font-medium text-[#282828] mb-3">
+              Niche / Catégorie de contenu
+            </label>
+            <div className="relative">
+              <select
+                value={selectedNiche}
+                onChange={(e) => setSelectedNiche(e.target.value)}
+                className="w-full p-3 border border-[#d3d3d3] rounded-lg text-base bg-white appearance-none pr-10 focus:outline-none focus:ring-2 focus:ring-[#cc0000] focus:border-transparent"
+              >
+                {YOUTUBE_NICHES.map((niche) => (
+                  <option key={niche.id} value={niche.id}>
+                    {niche.label} - {niche.description}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#606060] pointer-events-none" />
+            </div>
+            {selectedNicheData && (
+              <p className="text-xs text-[#606060] mt-2">
+                <strong>Critères spécifiques :</strong>{" "}
+                {selectedNicheData.criteria}
+              </p>
+            )}
+          </div>
+
+          {/* Erreur */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
+
+          {/* Bouton d'analyse */}
+          <div>
             <ButtonColorful
               label={
-                isAnalyzing
-                  ? "Analyse experte en cours..."
-                  : "🚀 Analyser ma miniature"
+                isAnalyzing ? "Analyse en cours..." : "🚀 Analyser ma miniature"
               }
               onClick={handleAnalyze}
               disabled={isAnalyzing || !image || !title.trim()}
@@ -245,11 +311,11 @@ export default function ThumbnailAnalyzer() {
         <div className="bg-white rounded-lg border border-[#d3d3d3] p-8 text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[#cc0000]" />
           <h3 className="text-lg font-semibold text-[#282828] mb-2">
-            Analyse experte en cours...
+            Analyse en cours...
           </h3>
           <p className="text-[#606060]">
-            L'IA analyse votre miniature selon les critères de performance
-            YouTube
+            L'IA analyse votre miniature selon les critères de votre niche (
+            {selectedNicheData?.label})
           </p>
         </div>
       )}
@@ -257,7 +323,7 @@ export default function ThumbnailAnalyzer() {
       {/* Résultats */}
       {result && (
         <div className="space-y-6">
-          {/* Score principal avec métadonnées */}
+          {/* Score principal */}
           <div className="bg-gradient-to-r from-[#cc0000] to-[#ff4444] rounded-lg p-8 text-white">
             <div className="text-center">
               <div className="flex items-center justify-center mb-4">
@@ -265,24 +331,14 @@ export default function ThumbnailAnalyzer() {
                 <span className="text-4xl font-bold">{result.score}/10</span>
               </div>
               <h3 className="text-2xl font-bold mb-2">Score de Performance</h3>
-              <div className="flex items-center justify-center space-x-8 text-lg">
-                <div className="flex items-center">
-                  <Eye className="w-5 h-5 mr-2" />
-                  <span>CTR: {result.ctrEstimate}</span>
-                </div>
-                <div className="flex items-center">
-                  <TrendingUp className="w-5 h-5 mr-2" />
-                  <span>
-                    {result.score >= 8
-                      ? "Excellent"
-                      : result.score >= 6
-                        ? "Bon"
-                        : "À améliorer"}
-                  </span>
-                </div>
+              <div className="flex items-center justify-center text-lg">
+                <TrendingUp className="w-5 h-5 mr-2" />
+                <span className="font-medium">
+                  {getScoreLabel(result.score)}
+                </span>
               </div>
 
-              {/* Métadonnées de performance */}
+              {/* Métadonnées */}
               {result.metadata && (
                 <div className="mt-4 text-sm opacity-75 border-t border-white/20 pt-4">
                   <div className="flex justify-center space-x-6">
@@ -292,118 +348,30 @@ export default function ThumbnailAnalyzer() {
                     </div>
                     <div className="flex items-center">
                       <Star className="w-4 h-4 mr-1" />
-                      Analyse experte
+                      Niche: {selectedNicheData?.label}
                     </div>
-                    <div>${result.metadata.estimatedCost.toFixed(5)}</div>
                   </div>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Analyse textuelle experte */}
-          {result.analysis && (
-            <div className="bg-white rounded-lg border border-[#d3d3d3] p-6">
-              <h4 className="text-lg font-semibold text-[#282828] mb-4 flex items-center">
-                🎯 Analyse experte
-              </h4>
-              <p className="text-[#282828] leading-relaxed text-base">
+          {/* Analyse détaillée */}
+          <div className="bg-white rounded-lg border border-[#d3d3d3] p-6">
+            <h4 className="text-lg font-semibold text-[#282828] mb-4 flex items-center">
+              🎯 Analyse experte pour {selectedNicheData?.label}
+            </h4>
+            <div className="prose prose-gray max-w-none">
+              <p className="text-[#282828] leading-relaxed text-base whitespace-pre-line">
                 {result.analysis}
               </p>
-            </div>
-          )}
-
-          {/* Facteurs visuels détectés */}
-          {result.visualFactors && (
-            <div className="bg-white rounded-lg border border-[#d3d3d3] p-6">
-              <h4 className="text-lg font-semibold text-[#282828] mb-4 flex items-center">
-                🔍 Facteurs visuels détectés
-              </h4>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="flex items-center space-x-2">
-                  <User className="w-4 h-4 text-blue-500" />
-                  <span className="text-sm">
-                    Visage:{" "}
-                    {result.visualFactors.facePresent ? "Présent" : "Absent"}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg">
-                    {getEmotionIcon(result.visualFactors.emotion)}
-                  </span>
-                  <span className="text-sm">
-                    Émotion: {result.visualFactors.emotion}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div
-                    className={`w-4 h-4 rounded ${getColorSchemeColor(result.visualFactors.colorScheme)}`}
-                  ></div>
-                  <span className="text-sm">
-                    Couleurs: {result.visualFactors.colorScheme}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Palette className="w-4 h-4 text-purple-500" />
-                  <span className="text-sm">
-                    Contraste: {result.visualFactors.contrast}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Smartphone className="w-4 h-4 text-green-500" />
-                  <span className="text-sm">
-                    Mobile:{" "}
-                    {result.visualFactors.mobileFriendly
-                      ? "Optimisé"
-                      : "À améliorer"}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
-                    Texte: {result.visualFactors.textCount} mots
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Points forts et améliorations */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Points forts */}
-            <div className="bg-white rounded-lg border border-[#d3d3d3] p-6">
-              <h4 className="text-lg font-semibold text-green-600 mb-4 flex items-center">
-                ✅ Points forts
-              </h4>
-              <ul className="space-y-3">
-                {result.strengths.map((strength, index) => (
-                  <li key={index} className="text-[#282828] flex items-start">
-                    <span className="text-green-500 mr-2 mt-1">•</span>
-                    <span className="leading-relaxed">{strength}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Points à améliorer */}
-            <div className="bg-white rounded-lg border border-[#d3d3d3] p-6">
-              <h4 className="text-lg font-semibold text-orange-600 mb-4 flex items-center">
-                ⚠️ Points à améliorer
-              </h4>
-              <ul className="space-y-3">
-                {result.improvements.map((improvement, index) => (
-                  <li key={index} className="text-[#282828] flex items-start">
-                    <span className="text-orange-500 mr-2 mt-1">•</span>
-                    <span className="leading-relaxed">{improvement}</span>
-                  </li>
-                ))}
-              </ul>
             </div>
           </div>
 
           {/* Suggestions d'amélioration */}
           <div className="bg-white rounded-lg border border-[#d3d3d3] p-6">
             <h4 className="text-lg font-semibold text-[#cc0000] mb-4 flex items-center">
-              💡 Suggestions d'amélioration
+              💡 Recommandations spécifiques
             </h4>
             <div className="space-y-4">
               {result.suggestions.map((suggestion, index) => (
@@ -411,7 +379,14 @@ export default function ThumbnailAnalyzer() {
                   key={index}
                   className="bg-[#f9f9f9] p-4 rounded border border-[#e0e0e0] border-l-4 border-l-[#cc0000]"
                 >
-                  <p className="text-[#282828] leading-relaxed">{suggestion}</p>
+                  <div className="flex items-start">
+                    <span className="bg-[#cc0000] text-white text-xs font-bold px-2 py-1 rounded mr-3 mt-1 flex-shrink-0">
+                      {index + 1}
+                    </span>
+                    <p className="text-[#282828] leading-relaxed">
+                      {suggestion}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>

@@ -1,4 +1,4 @@
-// src/app/api/analyze/route.ts - VERSION ANALYSE QUALITATIVE
+// src/app/api/analyze/route.ts - VERSION ÉQUILIBRÉE AVEC NICHES
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
@@ -6,9 +6,79 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Configurations spécifiques par niche
+const NICHE_CONFIGS = {
+  gaming: {
+    name: "Gaming",
+    keyFactors:
+      "expressions vives, couleurs saturées, action visible, gameplay recognizable",
+    expectations: "émotions marquées, énergie, intensité visuelle",
+    commonIssues: "surcharge d'effets, texte illisible, trop d'éléments",
+  },
+  education: {
+    name: "Éducation",
+    keyFactors:
+      "clarté, professionnalisme, éléments visuels didactiques, crédibilité",
+    expectations: "simplicité, lisibilité, sérieux professionnel",
+    commonIssues:
+      "manque de dynamisme, présentation fade, complexité excessive",
+  },
+  lifestyle: {
+    name: "Lifestyle",
+    keyFactors: "esthétique soignée, personnalité, ambiance, authenticité",
+    expectations: "beauté visuelle, style personnel, émotions positives",
+    commonIssues: "manque d'identité, surfilter, artifice trop visible",
+  },
+  tech: {
+    name: "Tech",
+    keyFactors: "produits visibles, setup professionnel, modernité, innovation",
+    expectations: "netteté, produits reconnaissables, environnement tech",
+    commonIssues:
+      "produit pas assez visible, setup amateur, manque de modernité",
+  },
+  fitness: {
+    name: "Fitness",
+    keyFactors: "énergie, transformation, motivation, résultats visibles",
+    expectations: "dynamisme, inspiration, progression visible",
+    commonIssues: "manque d'énergie, statisme, résultats non visibles",
+  },
+  entertainment: {
+    name: "Divertissement",
+    keyFactors: "expression marquée, émotion forte, fun, surprise",
+    expectations: "réaction visible, émotion intense, côté spectacle",
+    commonIssues: "expression fade, manque d'émotion, banalité",
+  },
+  business: {
+    name: "Business",
+    keyFactors: "professionnalisme, crédibilité, réussite, sérieux",
+    expectations: "autorité, expertise visible, environnement professionnel",
+    commonIssues: "manque de crédibilité, amateurisme, promesses excessives",
+  },
+  cooking: {
+    name: "Cuisine",
+    keyFactors:
+      "appétence visuelle, couleurs chaudes, présentation, gourmandise",
+    expectations: "nourriture appétissante, couleurs vibrantes, envie",
+    commonIssues:
+      "plat peu appétissant, mauvais éclairage, présentation négligée",
+  },
+  travel: {
+    name: "Voyage",
+    keyFactors: "paysages, aventure, découverte, évasion",
+    expectations: "beauté naturelle, dépaysement, expérience unique",
+    commonIssues: "paysage fade, manque d'évasion, banalité touristique",
+  },
+  other: {
+    name: "Généraliste",
+    keyFactors: "adaptation au contenu, originalité, clarté du message",
+    expectations: "cohérence avec le sujet, impact visuel",
+    commonIssues: "manque de spécificité, message peu clair",
+  },
+};
+
 export async function POST(request: NextRequest) {
   try {
-    console.log("🚀 API analyze - Version qualitative experte");
+    console.log("🚀 API analyze - Version équilibrée avec niches");
 
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
@@ -20,6 +90,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const image = formData.get("image") as File;
     const title = formData.get("title") as string;
+    const niche = (formData.get("niche") as string) || "other";
 
     if (!image || !title) {
       return NextResponse.json(
@@ -35,59 +106,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("🖼️ Traitement pour analyse qualitative experte");
+    console.log(`🎯 Analyse spécialisée pour la niche: ${niche}`);
 
     const bytes = await image.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const base64Image = buffer.toString("base64");
 
-    // Prompt d'analyse qualitative experte
-    const expertPrompt = `Tu es un expert YouTube qui analyse les miniatures selon des critères de performance prouvés.
+    const nicheConfig =
+      NICHE_CONFIGS[niche as keyof typeof NICHE_CONFIGS] || NICHE_CONFIGS.other;
+
+    // Prompt équilibré et spécialisé par niche
+    const balancedPrompt = `Tu es un expert YouTube spécialisé dans la niche ${nicheConfig.name}. 
 
 TITRE: "${title}"
+NICHE: ${nicheConfig.name}
 
-Analyse cette miniature selon ces facteurs de CTR mesurés :
+Analyse cette miniature selon les standards spécifiques de cette niche :
 
-CRITÈRES VISUELS (60% du score) :
-• Luminosité/contraste : Attire-t-elle l'œil dans un feed saturé ?
-• Visage humain : Présent ? Expression claire (neutre/souriant/choqué/surpris) ?
-• Couleurs dominantes : Rouge/jaune (haute performance) ou couleurs ternes ?
-• Lisibilité mobile : Texte lisible sur smartphone 6 pouces ?
-• Point focal unique : Un élément principal clair ou dispersion visuelle ?
+CRITÈRES SPÉCIFIQUES POUR ${nicheConfig.name.toUpperCase()} :
+• Facteurs clés attendus : ${nicheConfig.keyFactors}
+• Standards de la niche : ${nicheConfig.expectations}  
+• Problèmes courants : ${nicheConfig.commonIssues}
 
-CRITÈRES TECHNIQUES (25% du score) :
-• Texte sur miniature : Nombre de mots (0-3 optimal) ? Taille suffisante ?
-• Objets visuels : Flèches, cercles, emojis pour guider l'œil ?
-• Composition : Règle des tiers respectée ? Équilibre visuel ?
-• Différenciation : Sort du lot vs miniatures standards de la niche ?
+APPROCHE D'ANALYSE :
+1. Score sur 10 basé sur l'efficacité pour cette niche spécifique
+2. ÉQUILIBRE dans l'analyse : mentionner ce qui fonctionne ET ce qui peut être amélioré
+3. Suggestions CONSTRUCTIVES et SPÉCIFIQUES à la niche
+4. Éviter le ton excessivement critique - rester professionnel et bienveillant
 
-CRITÈRES TITRE (15% du score) :
-• Longueur : 40-60 caractères optimal
-• Curiosity gap : Promet sans révéler complètement
-• Urgence/émotion : Mots déclencheurs présents ?
-• Cohérence visuel-titre : Image et titre se complètent-ils ?
-
-Donne une analyse experte avec un score /10 basé sur ces critères mesurables et un CTR estimé réaliste.
+CONSIGNES DE TON :
+- Bienveillant mais honnête
+- Constructif plutôt que destructif  
+- Spécifique à la niche ${nicheConfig.name}
+- Si la miniature est correcte, le dire clairement
+- Ne pas inventer de problèmes s'il n'y en a pas de majeurs
 
 Format JSON strict :
 {
   "score": [1-10],
-  "ctrEstimate": "[X.X]%",
-  "analysis": "Cette miniature obtient X/10 car [analyse détaillée des forces]... Cependant, elle perd des points sur [faiblesses spécifiques avec explications]...",
-  "visualFactors": {
-    "facePresent": true/false,
-    "emotion": "neutre/souriant/choqué/surpris/absent",
-    "colorScheme": "rouge-jaune/bleu-vert/neutre/sombre", 
-    "textCount": X,
-    "mobileFriendly": true/false,
-    "contrast": "élevé/moyen/faible"
-  },
-  "strengths": ["force spécifique 1 avec explication", "force spécifique 2 avec explication", "force spécifique 3 avec explication"],
-  "improvements": ["manque précis 1 avec impact", "manque précis 2 avec impact"],
-  "suggestions": ["action concrète 1 avec justification", "action concrète 2 avec justification", "action concrète 3 avec justification"]
-}`;
+  "analysis": "Score X/10 pour votre miniature ${nicheConfig.name}. Points forts : [éléments qui fonctionnent bien]... Points d'amélioration : [éléments spécifiques à optimiser pour cette niche]... [évaluation équilibrée et constructive]",
+  "suggestions": [
+    "Suggestion 1 spécifique à la niche avec justification",
+    "Suggestion 2 spécifique à la niche avec justification", 
+    "Suggestion 3 spécifique à la niche avec justification"
+  ]
+}
 
-    console.log("🤖 Appel GPT-4o pour analyse experte...");
+Analyse cette miniature avec expertise mais bienveillance.`;
+
+    console.log("🤖 Appel GPT-4o pour analyse équilibrée...");
 
     const startTime = Date.now();
 
@@ -97,20 +164,20 @@ Format JSON strict :
         {
           role: "user",
           content: [
-            { type: "text", text: expertPrompt },
+            { type: "text", text: balancedPrompt },
             {
               type: "image_url",
               image_url: {
                 url: `data:image/${image.type.split("/")[1]};base64,${base64Image}`,
-                detail: "low", // Optimisé coût mais qualité préservée
+                detail: "low",
               },
             },
           ],
         },
       ],
-      max_tokens: 800, // Augmenté pour analyse qualitative
-      temperature: 0.3, // Équilibre créativité/consistance
-      top_p: 0.9,
+      max_tokens: 450,
+      temperature: 0.3, // Plus déterministe pour cohérence
+      top_p: 0.8,
     });
 
     const processingTime = Date.now() - startTime;
@@ -120,67 +187,38 @@ Format JSON strict :
       throw new Error("Aucune réponse de OpenAI");
     }
 
-    console.log("📊 Parsing analyse experte...");
+    console.log("📊 Parsing analyse équilibrée...");
 
     let analysis;
     try {
-      // Extraction du JSON de la réponse
       const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
       const jsonText = jsonMatch ? jsonMatch[0] : analysisText;
       analysis = JSON.parse(jsonText);
 
-      // Validation et enrichissement
+      // Validation avec fallback constructif
       analysis = {
-        score: Math.max(1, Math.min(10, parseInt(analysis.score) || 7)),
-        ctrEstimate: analysis.ctrEstimate || "8.0%",
-        analysis: analysis.analysis || "Analyse générée avec succès.",
-        visualFactors: {
-          facePresent: analysis.visualFactors?.facePresent || false,
-          emotion: analysis.visualFactors?.emotion || "non déterminé",
-          colorScheme: analysis.visualFactors?.colorScheme || "neutre",
-          textCount: analysis.visualFactors?.textCount || 0,
-          mobileFriendly: analysis.visualFactors?.mobileFriendly || true,
-          contrast: analysis.visualFactors?.contrast || "moyen",
-        },
-        strengths: (analysis.strengths || []).slice(0, 3),
-        improvements: (analysis.improvements || []).slice(0, 2),
+        score: Math.max(1, Math.min(10, parseInt(analysis.score) || 6)),
+        analysis:
+          analysis.analysis ||
+          `Miniature analysée pour la niche ${nicheConfig.name}. L'analyse spécialisée permet d'identifier les optimisations spécifiques à votre domaine.`,
         suggestions: (analysis.suggestions || []).slice(0, 3),
       };
     } catch (parseError) {
-      console.error("❌ Parsing error, fallback qualitatif");
+      console.error("❌ Parsing error, fallback équilibré");
 
-      // Fallback avec analyse qualitative basique
+      // Fallback spécialisé par niche
       analysis = {
-        score: 7,
-        ctrEstimate: "8.2%",
-        analysis:
-          "Cette miniature présente une structure cohérente avec des éléments visuels identifiables. L'analyse détaillée nécessiterait un format de réponse optimisé pour fournir des insights plus précis sur les facteurs de performance.",
-        visualFactors: {
-          facePresent: true,
-          emotion: "non déterminé",
-          colorScheme: "neutre",
-          textCount: 2,
-          mobileFriendly: true,
-          contrast: "moyen",
-        },
-        strengths: [
-          "Structure visuelle organisée",
-          "Éléments reconnaissables présents",
-          "Composition globalement équilibrée",
-        ],
-        improvements: [
-          "Optimisation des contrastes nécessaire",
-          "Clarification des éléments textuels",
-        ],
+        score: 6,
+        analysis: `Score 6/10 pour votre miniature ${nicheConfig.name}. Points forts : La miniature respecte les codes de base de votre niche. Points d'amélioration : Quelques optimisations peuvent améliorer l'impact spécifique aux attentes de votre audience ${nicheConfig.name.toLowerCase()}. L'analyse détaillée permettrait d'identifier les ajustements précis pour maximiser les performances.`,
         suggestions: [
-          "Renforcer le contraste des couleurs principales",
-          "Agrandir les éléments textuels pour la lisibilité mobile",
-          "Repositionner les éléments selon la règle des tiers",
+          `Optimiser les éléments visuels selon les standards ${nicheConfig.name} : ${nicheConfig.keyFactors}`,
+          `Renforcer l'impact émotionnel attendu dans la niche ${nicheConfig.name}`,
+          `Ajuster la composition pour mieux correspondre aux attentes de votre audience ${nicheConfig.name.toLowerCase()}`,
         ],
       };
     }
 
-    // Métadonnées pour monitoring
+    // Métadonnées avec info niche
     const tokensUsed = response.usage?.total_tokens || 0;
     const estimatedCost = tokensUsed * 0.0000025;
 
@@ -190,24 +228,22 @@ Format JSON strict :
         processingTime,
         tokensUsed,
         estimatedCost: Math.round(estimatedCost * 100000) / 100000,
-        analysisType: "qualitative-expert",
-        imageSize: Math.round(image.size / 1024),
+        niche: nicheConfig.name,
       },
     };
 
     console.log(
-      `✅ Analyse qualitative: ${tokensUsed} tokens, ~$${estimatedCost.toFixed(5)}`
+      `✅ Analyse ${nicheConfig.name}: ${tokensUsed} tokens, ~$${estimatedCost.toFixed(5)}`
     );
     return NextResponse.json(result);
   } catch (error) {
-    console.error("💥 Erreur analyse qualitative:", error);
+    console.error("💥 Erreur analyse équilibrée:", error);
 
     if (error instanceof Error) {
       if (error.message.includes("insufficient_quota")) {
         return NextResponse.json(
           {
-            error:
-              "Quota OpenAI dépassé. Ajoutez des crédits pour continuer les analyses expertes.",
+            error: "Quota OpenAI dépassé. Ajoutez des crédits pour continuer.",
           },
           { status: 402 }
         );
@@ -222,7 +258,7 @@ Format JSON strict :
     }
 
     return NextResponse.json(
-      { error: "Erreur lors de l'analyse experte" },
+      { error: "Erreur lors de l'analyse équilibrée" },
       { status: 500 }
     );
   }
